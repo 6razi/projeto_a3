@@ -1,0 +1,88 @@
+import sys
+from io import StringIO
+from unittest.mock import patch
+import sqlite3
+
+def init_db(conn):
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+        )
+    ''')
+    # Crie aqui outras tabelas necessárias para o fluxo principal
+    conn.commit()
+
+def main(conn):
+    # Exemplo simplificado da função principal para mostrar o fluxo
+    print("Bem-vindo ao Simulador Financeiro")
+    while True:
+        print("1 - Login")
+        print("2 - Criar conta")
+        print("0 - Sair")
+        opcao = input("Escolha: ")
+
+        if opcao == '2':
+            username = input("Usuário: ")
+            password = input("Senha: ")
+            cursor = conn.cursor()
+            try:
+                cursor.execute("INSERT INTO usuarios (username, password) VALUES (?, ?)", (username, password))
+                conn.commit()
+                print(f"Usuário {username} criado com sucesso!")
+            except sqlite3.IntegrityError:
+                print("Usuário já existe.")
+        elif opcao == '1':
+            username = input("Usuário: ")
+            password = input("Senha: ")
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM usuarios WHERE username=? AND password=?", (username, password))
+            if cursor.fetchone():
+                print(f"Bem-vindo, {username}!")
+            else:
+                print("Usuário ou senha inválidos.")
+        elif opcao == '0':
+            break
+        else:
+            print("Opção inválida.")
+
+def test_integracao_fluxo_principal_basico():
+    entradas_simuladas = [
+        '2',  # Criar conta
+        'testuser',
+        'testepassword',
+        '1',  # Login
+        'testuser',
+        'testepassword',
+        '0',  # Sair
+    ]
+
+    conn = sqlite3.connect(':memory:')
+    init_db(conn)  # Cria a tabela antes de rodar o fluxo principal
+
+    old_stdout = sys.stdout
+    mystdout = StringIO()
+    try:
+        with patch('builtins.input', side_effect=entradas_simuladas):
+            sys.stdout = mystdout
+            main(conn)
+    finally:
+        sys.stdout = old_stdout
+
+    cursor = conn.cursor()
+    cursor.execute('SELECT username FROM usuarios WHERE username = ?', ('testuser',))
+    usuario = cursor.fetchone()
+    assert usuario is not None
+
+    output = mystdout.getvalue()
+    assert "Bem-vindo ao Simulador Financeiro" in output or "Usuário testuser criado com sucesso!" in output
+
+    conn.close()
+
+    print("✅ Teste de fluxo principal básico passou!")
+    print("--- Output capturado: ---")
+    print(output)
+
+test_integracao_fluxo_principal_basico()
