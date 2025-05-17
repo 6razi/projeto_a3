@@ -1,0 +1,51 @@
+import sqlite3
+
+# Classe Funcionario (recriada para o teste)
+class Funcionario:
+    def __init__(self, nome, cargo, salario):
+        self.nome = nome
+        self.cargo = cargo
+        self.salario = salario
+
+# Função para criar a tabela no banco de dados
+def init_db(conn):
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS funcionarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome TEXT NOT NULL,
+            cargo TEXT NOT NULL,
+            salario REAL NOT NULL
+        )
+    ''')
+    conn.commit()
+
+# Função para inserir funcionário
+def inserir_funcionario(conn, funcionario):
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO funcionarios (nome, cargo, salario) VALUES (?, ?, ?)',
+                   (funcionario.nome, funcionario.cargo, funcionario.salario))
+    conn.commit()
+
+# Teste de integração
+def test_integracao_inserir_funcionario():
+    conn = sqlite3.connect(':memory:')
+    init_db(conn)  # Cria a tabela antes de inserir
+
+    funcionario = Funcionario("Maria", "Gerente", 5000.00)
+    inserir_funcionario(conn, funcionario)
+
+    cursor = conn.cursor()
+    cursor.execute('SELECT nome, cargo, salario FROM funcionarios WHERE nome = ?', ("Maria",))
+    resultado = cursor.fetchone()
+
+    assert resultado is not None, "Nenhum resultado retornado do banco"
+    assert resultado[0] == "Maria"
+    assert resultado[1] == "Gerente"
+    assert resultado[2] == 5000.00
+
+    conn.close()
+
+# Chamada direta para rodar no Colab
+test_integracao_inserir_funcionario()
+print("✅ Teste de integração de funcionário passou!")
