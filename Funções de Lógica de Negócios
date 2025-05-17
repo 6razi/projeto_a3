@@ -1,0 +1,79 @@
+from io import StringIO
+import sys
+
+# --- Código da sua lógica (definições) ---
+
+class Produto:
+    def __init__(self, nome, preco):
+        self.nome = nome
+        self.preco = preco
+
+def analisar_lucro(quantidade_vendas, custo_unitario, receita_total):
+    lucro_medio = (receita_total - (quantidade_vendas * custo_unitario)) / quantidade_vendas
+    print(f"Lucro médio por venda: R$ {lucro_medio:.2f}")
+
+def recomendar_precos(produtos):
+    for p in produtos:
+        novo_preco = p.preco * 1.1
+        print(f"Recomenda-se aumentar o preço de {p.nome} para R$ {novo_preco:.2f}")
+
+def analisar_risco(receita, custo_fixo, custo_variavel):
+    risco = custo_fixo + custo_variavel
+    if risco > receita * 0.5:
+        print("Alerta: O risco financeiro é elevado! Cuidado com os gastos.")
+    else:
+        print("Risco financeiro dentro dos limites aceitáveis.")
+
+# --- Código dos testes ---
+
+def test_integracao_analisar_lucro():
+    old_stdout = sys.stdout
+    sys.stdout = mystdout = StringIO()
+
+    # Aqui custo_unitario = 4.6 para resultado 0.40
+    analisar_lucro(1000, 4.6, 5000)
+
+    sys.stdout = old_stdout
+    output = mystdout.getvalue()
+
+    assert "Lucro médio por venda:" in output
+    assert "R$ 0.40" in output, f"Output inesperado: {output}"
+
+def test_integracao_recomendar_precos():
+    produtos = [Produto("Item1", 10.00), Produto("Item2", 20.00)]
+
+    old_stdout = sys.stdout
+    sys.stdout = mystdout = StringIO()
+
+    recomendar_precos(produtos)
+
+    sys.stdout = old_stdout
+    output = mystdout.getvalue()
+    assert "Recomenda-se aumentar o preço de Item1 para R$ 11.00" in output
+    assert "Recomenda-se aumentar o preço de Item2 para R$ 22.00" in output
+
+def test_integracao_analisar_risco():
+    old_stdout = sys.stdout
+    sys.stdout = mystdout = StringIO()
+
+    analisar_risco(1000, 600, 300)
+
+    sys.stdout = old_stdout
+    output = mystdout.getvalue()
+    assert "Alerta: O risco financeiro é elevado! Cuidado com os gastos." in output
+
+    old_stdout = sys.stdout
+    sys.stdout = mystdout = StringIO()
+
+    analisar_risco(1000, 200, 100)
+
+    sys.stdout = old_stdout
+    output = mystdout.getvalue()
+    assert "Risco financeiro dentro dos limites aceitáveis." in output
+
+# --- Rodar os testes ---
+test_integracao_analisar_lucro()
+test_integracao_recomendar_precos()
+test_integracao_analisar_risco()
+
+print("✅ Todos os testes de análises passaram!")
