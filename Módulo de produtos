@@ -1,0 +1,38 @@
+import sqlite3
+
+class Produto:
+    def __init__(self, nome, preco):
+        self.nome = nome
+        self.preco = preco
+
+def inserir_produto(conn, produto):
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO produtos (nome, preco) VALUES (?, ?)",
+        (produto.nome, produto.preco)
+    )
+    conn.commit()
+    return cursor.lastrowid
+
+def test_integracao_inserir_produto():
+    conn = sqlite3.connect(':memory:')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS produtos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nome TEXT,
+        preco REAL
+    )''')
+    conn.commit()
+
+    produto = Produto("Mouse", 25.00)
+    produto_id = inserir_produto(conn, produto)
+
+    cursor.execute('SELECT nome, preco FROM produtos WHERE id = ?', (produto_id,))
+    resultado = cursor.fetchone()
+    assert resultado is not None, "Nenhum resultado encontrado no banco."
+    assert resultado[0] == "Mouse", f"Esperado 'Mouse', mas veio {resultado[0]}"
+    assert resultado[1] == 25.00, f"Esperado 25.00, mas veio {resultado[1]}"
+    conn.close()
+
+test_integracao_inserir_produto()
+print("✅ Teste de integração do produto passou!")
