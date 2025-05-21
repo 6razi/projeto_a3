@@ -1,0 +1,130 @@
+import math
+import sqlite3
+import hashlib
+import unittest
+
+# === Classes ===
+class Funcionario:
+    def _init_(self, nome, cargo, salario):
+        self.nome = nome
+        self.cargo = cargo
+        self.salario = salario
+
+class Produto:
+    def _init_(self, nome, preco):
+        self.nome = nome
+        self.preco = preco
+
+# === Funções de Banco de Dados ===
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def create_user(conn, username, password):
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO usuarios (username, password) VALUES (?, ?)', 
+                   (username, hash_password(password)))
+    conn.commit()
+
+def authenticate_user(conn, username, password):
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM usuarios WHERE username = ? AND password = ?', 
+                   (username, hash_password(password)))
+    return cursor.fetchone() is not None
+
+def inserir_funcionario(conn, funcionario):
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO funcionarios (nome, cargo, salario) VALUES (?, ?, ?)', 
+                   (funcionario.nome, funcionario.cargo, funcionario.salario))
+    conn.commit()
+
+def inserir_produto(conn, produto):
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO produtos (nome, preco) VALUES (?, ?)', 
+                   (produto.nome, produto.preco))
+    conn.commit()
+    return cursor.lastrowid
+
+def inserir_venda(conn, produto_id, vendas):
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO vendas (produto_id, vendas) VALUES (?, ?)', 
+                   (produto_id, vendas))
+    conn.commit()
+
+def inserir_historico(conn, ganho_planejado, custo_material, gasto_fixo_mensal, lucro_necessario, investimento_reservado, emergencia_reservada, lucro_liquido):
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO historico_simulacoes 
+                      (ganho_planejado, custo_material, gasto_fixo_mensal, lucro_necessario, investimento_reservado, emergencia_reservada, lucro_liquido)
+                      VALUES (?, ?, ?, ?, ?, ?, ?)''',
+                   (ganho_planejado, custo_material, gasto_fixo_mensal, lucro_necessario, investimento_reservado, emergencia_reservada, lucro_liquido))
+    conn.commit()
+
+# === Testes Unitários ===
+class TesteBancoDeDados(unittest.TestCase):
+    def setUp(self):
+        self.conn = sqlite3.connect(":memory:")
+        self.cursor = self.conn.cursor()
+        self.cursor.executescript('''
+            CREATE TABLE usuarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE,
+                password TEXT
+            );
+            CREATE TABLE funcionarios (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT,
+                cargo TEXT,
+                salario REAL
+            );
+            CREATE TABLE produtos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nome TEXT,
+                preco REAL
+            );
+            CREATE TABLE vendas (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                produto_id INTEGER,
+                vendas INTEGER,
+                FOREIGN KEY (produto_id) REFERENCES produtos (id)
+            );
+            CREATE TABLE historico_simulacoes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ganho_planejado REAL,
+                custo_material REAL,
+                gasto_fixo_mensal REAL,
+                lucro_necessario REAL,
+                investimento_reservado REAL,
+                emergencia_reservada REAL,
+                lucro_liquido REAL
+            );
+        ''')
+
+    def tearDown(self):
+        self.conn.close()
+
+    def test_create_user_and_authenticate(self):
+        create_user(self.conn, "usuario_teste", "senha123")
+        self.assertTrue(authenticate_user(self.conn, "usuario_teste", "senha123"))
+        self.assertFalse(authenticate_user(self.conn, "usuario_teste", "senhaErrada"))
+
+    def test_inserir_funcionario(self):
+        funcionario = Funcionario("Ana", "Gerente", 4000.00)
+        inserir_funcionario(self.conn, funcionario)
+        self.cursor.execute("SELECT nome FROM funcionarios WHERE nome = 'Ana'")
+        self.assertIsNotNone(self.cursor.fetchone())
+
+    def test_inserir_produto_e_venda(self):
+        produto = Produto("Camiseta", 35.00)
+        produto_id = inserir_produto(self.conn, produto)
+        self.cursor.execute("SELECT nome FROM produtos WHERE id = ?", (produto_id,))
+        self.assertEqual(self.cursor.fetchone()[0], "Camiseta")
+        inserir_venda(self.conn, produto_id, 10)
+        self.cursor.execute("SELECT vendas FROM vendas WHERE produto_id = ?", (produto_id,))
+        self.assertEqual(self.cursor.fetchone()[0], 10)
+
+    def test_inserir_historico(self):
+        inserir_historico(self.conn, 5000.0, 1500.0, 1200.0, 2300.0, 300.0, 200.0, 1800.0)
+        self.cursor.execute("SELECT lucro_liquido FROM historico_simulacoes")
+        self.assertEqual(self.cursor.fetchone()[0], 1800.0)
+
+# === Executar testes no Colab ===
+unittest.main(argv=[''], verbosity=2, exit=False)
